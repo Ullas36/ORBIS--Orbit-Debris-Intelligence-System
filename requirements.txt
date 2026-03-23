@@ -1,0 +1,10 @@
+streamlit
+numpy
+pandas
+requests
+sgp4
+astropy
+plotly
+dimod
+dwave-samplers
+torch
