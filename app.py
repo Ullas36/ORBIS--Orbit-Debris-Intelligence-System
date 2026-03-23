@@ -226,6 +226,15 @@ with st.sidebar:
 raw_tles = fetch_debris_catalog()
 df = propagate_catalog(tuple(raw_tles))
 
+# Safety check
+if df is None or len(df) == 0:
+    st.error("Could not load debris data. CelesTrak may be unavailable.")
+    st.info("Click 'Refresh TLE data' in the sidebar to retry.")
+    st.stop()
+if "risk_tier" not in df.columns:
+    st.error("Data loaded but missing columns. Please refresh.")
+    st.stop()
+
 # ── Metrics row ───────────────────────────────────────────────────────────────
 st.title("ORBIS — Orbital Debris Intelligence System")
 c1, c2, c3, c4 = st.columns(4)
