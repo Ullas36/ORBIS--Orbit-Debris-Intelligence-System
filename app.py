@@ -226,27 +226,30 @@ with st.sidebar:
 raw_tles = fetch_debris_catalog()
 df = propagate_catalog(tuple(raw_tles))
 
-# Safety check
-if df is None or len(df) == 0:
-    st.error("Could not load debris data. CelesTrak may be unavailable.")
-    st.info("Click 'Refresh TLE data' in the sidebar to retry.")
-    st.stop()
-if "risk_tier" not in df.columns:
-    st.error("Data loaded but missing columns. Please refresh.")
-    st.stop()
-
-# ── Metrics row ───────────────────────────────────────────────────────────────
 st.title("ORBIS — Orbital Debris Intelligence System")
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Objects tracked",    f"{len(df):,}")
-c2.metric("High risk",          f"{len(df[df.risk_tier=='High']):,}")
-c3.metric("Altitude range",     f"{df.altitude_km.min():.0f}–{df.altitude_km.max():.0f} km")
-c4.metric("Avg DCI score",      f"{df.dci_score.mean():.3f}")
 
-st.divider()
+DATA_OK = (
+    df is not None and
+    len(df) > 0 and
+    "risk_tier" in df.columns and
+    "altitude_km" in df.columns and
+    "dci_score" in df.columns
+)
+
+if not DATA_OK:
+    st.error("Could not load debris catalog from CelesTrak.")
+    st.info("This usually means the server is temporarily unavailable. Click Refresh TLE data in the sidebar.")
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Hubble_ultra_deep_field.jpg/800px-Hubble_ultra_deep_field.jpg")
+else:
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Objects tracked",    f"{len(df):,}")
+    c2.metric("High risk",          f"{len(df[df.risk_tier=='High']):,}")
+    c3.metric("Altitude range",     f"{df.altitude_km.min():.0f}-{df.altitude_km.max():.0f} km")
+    c4.metric("Avg DCI score",      f"{df.dci_score.mean():.3f}")
+    st.divider()
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3 = st.tabs(["Live Debris Globe", "Risk Catalog", "QML Optimizer"])
+    tab1, tab2, tab3 = st.tabs(["Live Debris Globe", "Risk Catalog", "QML Optimizer"])
 
 # ── TAB 1: Globe ──────────────────────────────────────────────────────────────
 with tab1:
