@@ -422,18 +422,11 @@ with tab1:
     with col_right:
         st.markdown('<div class="section-header">ADR Priority Targets</div>', unsafe_allow_html=True)
         for i, t in enumerate(ADR_TARGETS):
-            color = "#ff2d55" if t["dci"] > 0.75 else "#ffd700" if t["dci"] > 0.65 else "#00ff88"
-            st.markdown(f"""
-            <div class="target-item">
-                <span class="target-idx">T{i+1:02d}</span>
-                <span class="target-name">{t['name']}</span>
-                <span class="target-alt">{t['alt']}km</span>
-                <span class="target-inc">{t['inc']}°</span>
-                <span style="color:{color};font-family:var(--font-mono);font-size:0.7rem">
-                    {t['dci']:.3f}
-                </span>
-            </div>
-            """, unsafe_allow_html=True)
+            dci_bar = "🔴" if t["dci"] > 0.75 else "🟡" if t["dci"] > 0.65 else "🟢"
+            st.markdown(
+                f"`T{i+1:02d}` **{t['name']}** — "
+                f"{t['alt']}km · {t['inc']}° · {dci_bar} {t['dci']:.3f}",
+            )
 
         st.markdown("<br>", unsafe_allow_html=True)
         load_live = st.button("⟳  Fetch Live TLE Data", use_container_width=True)
@@ -603,49 +596,23 @@ with tab2:
             elif q <= 150.0: return "quality-bad"
             return "quality-break"
 
-        html = """
-        <table class="qpu-table">
-        <thead><tr>
-            <th>n</th><th>Qubits</th><th>Depth</th>
-            <th>Run</th><th>QPU Quality</th><th>SA Quality</th>
-        </tr></thead><tbody>
-        """
-        prev_n = None
-        for r in rows:
-            border = "border-top: 1px solid #0d2444;" if r["n"] != prev_n and prev_n else ""
-            cls    = quality_color(r["Quality (%)"])
-            sa_cls = quality_color(r["SA (%)"])
-            html += f"""
-            <tr style="{border}">
-                <td style="color:var(--cyan)">{r['n'] if r['n'] != prev_n else ''}</td>
-                <td>{r['Qubits'] if r['n'] != prev_n else ''}</td>
-                <td style="color:var(--muted)">{r['Depth'] if r['n'] != prev_n else ''}</td>
-                <td style="color:var(--muted)">{r['Run']}</td>
-                <td class="{cls}">{r['Quality (%)']:.1f}%</td>
-                <td class="{sa_cls}">{r['SA (%)']:.1f}%</td>
-            </tr>"""
-            prev_n = r["n"]
-        html += "</tbody></table>"
-        table_rows = []
-for r in rows:
-    table_rows.append({
-        "n": r["n"],
-        "Qubits": r["Qubits"],
-        "Depth": r["Depth"],
-        "Run": r["Run"],
-        "QPU Quality (%)": r["Quality (%)"],
-        "SA Quality (%)": r["SA (%)"]
-    })
-table_df = pd.DataFrame(table_rows)
-st.dataframe(
-    table_df,
-    use_container_width=True,
-    hide_index=True,
-    column_config={
-        "QPU Quality (%)": st.column_config.NumberColumn(format="%.1f%%"),
-        "SA Quality (%)": st.column_config.NumberColumn(format="%.1f%%"),
-    }
-)
+        table_df = pd.DataFrame([{
+            "n": r["n"],
+            "Qubits": r["Qubits"],
+            "Depth": r["Depth"],
+            "Run": r["Run"],
+            "QPU Quality (%)": r["Quality (%)"],
+            "SA Quality (%)": r["SA (%)"],
+        } for r in rows])
+        st.dataframe(
+            table_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "QPU Quality (%)": st.column_config.NumberColumn(format="%.1f"),
+                "SA Quality (%)":  st.column_config.NumberColumn(format="%.1f"),
+            }
+        )
 
     with col_b:
         st.markdown('<div class="section-header">Noise vs Circuit Depth</div>',
@@ -895,42 +862,37 @@ with tab3:
                                 config={"displayModeBar": False})
 
                 st.markdown('<div class="section-header">Step-by-Step Mission Plan</div>',
-            unsafe_allow_html=True)
-
-plan_data = []
-cumulative = 0.0
-for step_i, t_idx in enumerate(seq):
-    t  = tgts[t_idx]
-    dv = cm[seq[step_i]][seq[step_i+1]] if step_i < len(seq)-1 else 0.0
-    cumulative += dv
-    plan_data.append({
-        "Step": step_i + 1,
-        "Target": t["name"],
-        "Alt (km)": t["alt"],
-        "Inc (°)": t["inc"],
-        "Type": t["type"],
-        "ΔV to Next (km/s)": f"{dv:.4f}" if step_i < len(seq)-1 else "—",
-        "DCI Score": t["dci"]
-    })
-
-plan_df = pd.DataFrame(plan_data)
-st.dataframe(
-    plan_df,
-    use_container_width=True,
-    hide_index=True,
-    column_config={
-        "Step": st.column_config.NumberColumn(width="small"),
-        "DCI Score": st.column_config.ProgressColumn(
-            min_value=0, max_value=1, format="%.4f"
-        ),
-    }
-)
-st.markdown(f"""
-<div style="text-align:right;font-family:'Share Tech Mono',monospace;
-            font-size:0.85rem;color:#00e5ff;padding:0.5rem 0">
-    Total Mission ΔV: <strong>{cost:.4f} km/s</strong>
-</div>
-""", unsafe_allow_html=True)
+                            unsafe_allow_html=True)
+                plan_rows = []
+                cumulative = 0.0
+                for step_i, t_idx in enumerate(seq):
+                    t   = tgts[t_idx]
+                    dv  = cm[seq[step_i]][seq[step_i+1]] if step_i < len(seq)-1 else 0.0
+                    cumulative += dv
+                    plan_rows.append({
+                        "Step":           step_i + 1,
+                        "Target":         t["name"],
+                        "Alt (km)":       t["alt"],
+                        "Inc (°)":        t["inc"],
+                        "Type":           t["type"],
+                        "ΔV (km/s)":      round(dv, 4) if step_i < len(seq)-1 else 0.0,
+                        "DCI":            t["dci"],
+                    })
+                plan_df = pd.DataFrame(plan_rows)
+                st.dataframe(
+                    plan_df,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Step":  st.column_config.NumberColumn(width="small"),
+                        "DCI":   st.column_config.ProgressColumn(
+                                     min_value=0, max_value=1, format="%.4f"),
+                        "ΔV (km/s)": st.column_config.NumberColumn(format="%.4f"),
+                    }
+                )
+                st.markdown(
+                    f"**Total mission ΔV: `{cost:.4f} km/s`**"
+                )
 
         else:
             st.markdown("""
