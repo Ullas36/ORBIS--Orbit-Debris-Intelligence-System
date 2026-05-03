@@ -626,7 +626,26 @@ with tab2:
             </tr>"""
             prev_n = r["n"]
         html += "</tbody></table>"
-        st.markdown(html, unsafe_allow_html=True)
+        table_rows = []
+for r in rows:
+    table_rows.append({
+        "n": r["n"],
+        "Qubits": r["Qubits"],
+        "Depth": r["Depth"],
+        "Run": r["Run"],
+        "QPU Quality (%)": r["Quality (%)"],
+        "SA Quality (%)": r["SA (%)"]
+    })
+table_df = pd.DataFrame(table_rows)
+st.dataframe(
+    table_df,
+    use_container_width=True,
+    hide_index=True,
+    column_config={
+        "QPU Quality (%)": st.column_config.NumberColumn(format="%.1f%%"),
+        "SA Quality (%)": st.column_config.NumberColumn(format="%.1f%%"),
+    }
+)
 
     with col_b:
         st.markdown('<div class="section-header">Noise vs Circuit Depth</div>',
@@ -875,43 +894,43 @@ with tab3:
                 st.plotly_chart(fig4, use_container_width=True,
                                 config={"displayModeBar": False})
 
-                # Step-by-step table
                 st.markdown('<div class="section-header">Step-by-Step Mission Plan</div>',
-                            unsafe_allow_html=True)
-                html5 = """
-                <table class="qpu-table">
-                <thead><tr>
-                    <th>Step</th><th>Target</th><th>Alt</th>
-                    <th>Inc</th><th>Type</th><th>ΔV to Next</th><th>DCI</th>
-                </tr></thead><tbody>
-                """
-                cumulative = 0.0
-                for step_i, t_idx in enumerate(seq):
-                    t   = tgts[t_idx]
-                    dv  = cm[seq[step_i]][seq[step_i+1]] if step_i < len(seq)-1 else 0.0
-                    cumulative += dv
-                    dv_str = f"{dv:.4f} km/s" if step_i < len(seq)-1 else "—"
-                    dci_color = "#ff2d55" if t["dci"] > 0.75 else "#ffd700" if t["dci"] > 0.65 else "#00ff88"
-                    html5 += f"""
-                    <tr>
-                        <td style="color:var(--cyan)">{step_i+1}</td>
-                        <td>{t['name']}</td>
-                        <td style="color:var(--muted)">{t['alt']} km</td>
-                        <td style="color:var(--muted)">{t['inc']}°</td>
-                        <td style="color:var(--muted)">{t['type']}</td>
-                        <td style="color:var(--text)">{dv_str}</td>
-                        <td style="color:{dci_color}">{t['dci']:.4f}</td>
-                    </tr>"""
-                html5 += f"""
-                <tr style="border-top:1px solid var(--cyan)">
-                    <td colspan="5" style="color:var(--muted);text-align:right">
-                        Total mission ΔV:
-                    </td>
-                    <td style="color:var(--cyan);font-weight:bold">{cost:.4f} km/s</td>
-                    <td></td>
-                </tr>
-                </tbody></table>"""
-                st.markdown(html5, unsafe_allow_html=True)
+            unsafe_allow_html=True)
+
+plan_data = []
+cumulative = 0.0
+for step_i, t_idx in enumerate(seq):
+    t  = tgts[t_idx]
+    dv = cm[seq[step_i]][seq[step_i+1]] if step_i < len(seq)-1 else 0.0
+    cumulative += dv
+    plan_data.append({
+        "Step": step_i + 1,
+        "Target": t["name"],
+        "Alt (km)": t["alt"],
+        "Inc (°)": t["inc"],
+        "Type": t["type"],
+        "ΔV to Next (km/s)": f"{dv:.4f}" if step_i < len(seq)-1 else "—",
+        "DCI Score": t["dci"]
+    })
+
+plan_df = pd.DataFrame(plan_data)
+st.dataframe(
+    plan_df,
+    use_container_width=True,
+    hide_index=True,
+    column_config={
+        "Step": st.column_config.NumberColumn(width="small"),
+        "DCI Score": st.column_config.ProgressColumn(
+            min_value=0, max_value=1, format="%.4f"
+        ),
+    }
+)
+st.markdown(f"""
+<div style="text-align:right;font-family:'Share Tech Mono',monospace;
+            font-size:0.85rem;color:#00e5ff;padding:0.5rem 0">
+    Total Mission ΔV: <strong>{cost:.4f} km/s</strong>
+</div>
+""", unsafe_allow_html=True)
 
         else:
             st.markdown("""
