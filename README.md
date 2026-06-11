@@ -1,4 +1,4 @@
-# ORBIS — Orbital Remediation Quantum Intelligence System
+# ORBIS — Orbital Remediation Quantum Intelligence System.
 
 <div align="center">
 
